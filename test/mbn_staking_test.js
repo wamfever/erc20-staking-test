@@ -55,10 +55,6 @@ describe("MbnStakingToken", function() {
   });
 
   it("should be able to stake token", async function() {
-    console.log(await this.mbnToken.balanceOf(this.alice.address));
-
-
-    console.log(this.alice.address);
     await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 50);
     await this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package"));
   });
