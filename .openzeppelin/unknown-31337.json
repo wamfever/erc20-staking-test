@@ -1,0 +1,46 @@
+{
+  "manifestVersion": "3.2",
+  "impls": {
+    "4b646758793aa1ce4a6c4c97a1b0315aa67b0884e59dbbe4d583c0e0948134e4": {
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "txHash": "0x848c6c797153d52ae1cc9e6872f7d3ba50cb31fc1e12d2c1679b5d319862fd98",
+      "layout": {
+        "storage": [
+          {
+            "contract": "Initializable",
+            "label": "_initialized",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:23"
+          },
+          {
+            "contract": "Initializable",
+            "label": "_initializing",
+            "type": "t_bool",
+            "src": "@openzeppelin/contracts/proxy/utils/Initializable.sol:28"
+          }
+        ],
+        "types": {
+          "t_bool": {
+            "label": "bool"
+          }
+        }
+      }
+    }
+  },
+  "proxies": [
+    {
+      "address": "0xDC11f7E700A4c898AE5CAddB1082cFfa76512aDD",
+      "kind": "transparent",
+      "txHash": "0x0104710d2d90e314a3df912ed0f3f507ed4db4ac3202b2ccff55c194aa0719be"
+    },
+    {
+      "address": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+      "kind": "transparent",
+      "txHash": "0x0f6ca11cfb56e119654a9c70f24cd6924fd7b711ae5dadc50f9380583a6a4e40"
+    }
+  ],
+  "admin": {
+    "address": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "txHash": "0xa22e0353aca806bcadb1bc1e34dca681299d494689643efc414c2370ac21769b"
+  }
+}
