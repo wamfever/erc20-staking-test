@@ -7,24 +7,24 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "hardhat/console.sol";
 
 contract MbnStaking is Initializable {
-    using SafeMath for uint256;
+    using SafeMath for uint;
 
     struct YieldType {
-        uint256 daysBlocked;
-        uint256 daysLocked;
-        uint256 packageInterest;
+        uint daysBlocked;
+        uint daysLocked;
+        uint packageInterest;
     }
 
     struct Stake {
-        uint256 amount;
-        uint256 timestamp;
+        uint amount;
+        uint timestamp;
         bytes32 packageName;
-        uint256 withdrawnTimestamp;
+        uint withdrawnTimestamp;
     }
 
     struct Staker {
         Stake[] stakes;
-        uint256 totalStakedBalance;
+        uint totalStakedBalance;
     }
 
     IERC20 public tokenContract;
@@ -48,16 +48,16 @@ contract MbnStaking is Initializable {
     // receive function (if exists)
     // fallback function (if exists)
     // external
-    function packageLength() external view returns (uint256) {
+    function packageLength() external view returns (uint) {
         return packageNames.length;
     }
 
-    function stakesLength(address _address) external view returns (uint256) {
+    function stakesLength(address _address) external view returns (uint) {
         return stakers[_address].stakes.length;
     }
 
     // public
-    function stakeTokens(uint256 _amount, bytes32 _packageName) public {
+    function stakeTokens(uint _amount, bytes32 _packageName) public {
         if (stakers[msg.sender].stakes.length > 0) {
             stakerAddresses.push(msg.sender);
         }
@@ -72,15 +72,15 @@ contract MbnStaking is Initializable {
 
         stakers[msg.sender].stakes.push(newStake);
 
-        // tokenContract.transferFrom(msg.sender, address(this), _amount);
+        tokenContract.transferFrom(msg.sender, address(this), _amount);
     }
     // internal
     // private
     function createPackage(
         bytes32 _name,
-        uint256 _days,
-        uint256 _daysBlocked,
-        uint256 _packageInterest
+        uint _days,
+        uint _daysBlocked,
+        uint _packageInterest
     ) private {
         YieldType memory package;
         package.daysLocked = _days;
@@ -89,6 +89,5 @@ contract MbnStaking is Initializable {
 
         packages[_name] = package;
         packageNames.push(_name);
-
     }
 }

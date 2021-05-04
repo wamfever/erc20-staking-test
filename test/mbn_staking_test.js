@@ -21,25 +21,20 @@ describe("MbnStakingToken", function() {
   });
 
   beforeEach(async function () {
-    this.mbnToken = await this.MbnToken.deploy("Mbn token", "MBN");
+    this.mbnToken = await this.MbnToken.deploy("Mbn token", "MBN", 1000000);
     this.mbnToken.deployed();
     this.mbnStaking = await upgrades.deployProxy(this.MbnStaking, [this.mbnToken.address]);
 
-    // console.log('mint');
-    // console.log(await this.mbnToken.balanceOf(this.owner.address));
-    // await this.mbnToken._mint(this.owner.address, '100000000000000000000');
-    // console.log(await this.mbnToken.balanceOf(this.owner.address));
-
-    // await this.mbnToken.transferFrom(this.owner.address, this.alice.address, '100000000000000000000', []);
+    await this.mbnToken.transfer(this.alice.address, 1000);
+    await this.mbnToken.transfer(this.bob.address, 1000);
+    await this.mbnToken.transfer(this.carol.address, 1000);
   });
   
-  // it("Should be upgratable at the same address", async function() {
-  //   const MbnStakingTest = await ethers.getContractFactory("MbnStakingTest");
-  //   const mbnStakingTest = await upgrades.upgradeProxy(this.mbnStaking.address, MbnStakingTest);
+  it("Should be upgratable at the same address", async function() {
+    const mbnStaking2 = await upgrades.upgradeProxy(this.mbnStaking.address, this.MbnStaking);
 
-  
-  //   expect(mbnStakingTest.address).to.be.equal(this.mbnStaking.address);
-  // });
+    expect(mbnStaking2.address).to.be.equal(this.mbnStaking.address);
+  });
 
   it("should have correct number of packeges", async function() {
     const length = await this.mbnStaking.packageLength();
@@ -59,15 +54,13 @@ describe("MbnStakingToken", function() {
     expect(this.mbnStaking.packages("test test test")).to.be.reverted;
   });
 
-  it("should have all packeges defined", async function() {
-    console.log(await this.mbnToken.balanceOf(this.owner.address));
+  it("should be able to stake token", async function() {
+    console.log(await this.mbnToken.balanceOf(this.alice.address));
 
 
-    // console.log(this.alice.address);
-    // await this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package"));
-
-    // console.log(await this.mbnStaking.stakers(this.alice.address));
-    // console.log(await this.mbnStaking.stakesLength(this.alice.address));
+    console.log(this.alice.address);
+    await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 50);
+    await this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package"));
   });
 
 });

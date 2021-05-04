@@ -2,7 +2,7 @@ const hardhat = require("hardhat");
 
 async function main() {
   const MbnToken = await hardhat.ethers.getContractFactory("MbnToken");
-  const mbnToken = await MbnToken.deploy("Mbn token", "MBN");
+  const mbnToken = await MbnToken.deploy("Mbn token", "MBN", 1000000);
 
   await mbnToken.deployed();
 
