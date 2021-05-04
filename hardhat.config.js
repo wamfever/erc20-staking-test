@@ -1,0 +1,38 @@
+require("@nomiclabs/hardhat-waffle");
+
+// This is a sample Hardhat task. To learn how to create your own go to
+// https://hardhat.org/guides/create-task.html
+task("accounts", "Prints the list of accounts", async () => {
+  const accounts = await ethers.getSigners();
+
+  for (const account of accounts) {
+    console.log(account.address);
+  }
+});
+
+// You need to export an object to set up your config
+// Go to https://hardhat.org/config/ to learn more
+
+// const INFURA_URL = 'INFURA_URL'
+// const INFURA_PRIATE_KEY = 'INFURA_PRIATE_KEY'
+
+/**
+ * @type import('hardhat/config').HardhatUserConfig
+ */
+module.exports = {
+  solidity: "0.8.4",
+  networks: {
+    ganache: {
+      url: "http://localhost:7545",
+      gasLimit: 6000000000,
+      accounts: {
+        mnemonic: "major unaware october awful balcony easy average yellow armed name dash recipe"
+      }
+    },
+    // rinkeby: {
+    //   url: INFURA_URL,
+    //   accounts: [`0x${INFURA_PRIATE_KEY}`]
+    // }
+  }
+};
+
