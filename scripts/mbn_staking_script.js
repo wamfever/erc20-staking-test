@@ -1,8 +1,13 @@
 const hardhat = require("hardhat");
 
 async function main() {
+  const MbnToken = await hardhat.ethers.getContractFactory("MbnToken");
+  const mbnToken = await MbnToken.deploy("Mbn token", "MBN");
+
+  await mbnToken.deployed();
+
   const MbnStaking = await hardhat.ethers.getContractFactory("MbnStaking");
-  const mbnStaking = await hardhat.upgrades.deployProxy(MbnStaking);
+  const mbnStaking = await hardhat.upgrades.deployProxy(MbnStaking, [mbnToken.address]);
 
   await mbnStaking.deployed();
 
