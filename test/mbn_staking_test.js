@@ -39,19 +39,19 @@ describe("MbnStakingToken", function() {
   it("should have correct number of packeges", async function() {
     const length = await this.mbnStaking.packageLength();
     for(let i = 0; i < length; i++) {
-      expect(this.mbnStaking.packageNames(i)).to.not.be.reverted;
+      await expect(this.mbnStaking.packageNames(i)).to.not.be.reverted;
     }
 
-    expect(this.mbnStaking.packageNames(length + 1)).to.be.reverted;
+    await expect(this.mbnStaking.packageNames(length + 1)).to.be.reverted;
   });
 
   it("should have all packeges defined", async function() {
     const length = await this.mbnStaking.packageLength();
     for(let i = 0; i < length; i++) {
       let packageName = await this.mbnStaking.packageNames(i);
-      expect(this.mbnStaking.packages(packageName)).to.not.be.reverted;
+      await expect(this.mbnStaking.packages(packageName)).to.not.be.reverted;
     }
-    expect(this.mbnStaking.packages("test test test")).to.be.reverted;
+    await expect(this.mbnStaking.packages("Wrong package name")).to.be.reverted;
   });
 
   it("should be able to stake token", async function() {
@@ -59,4 +59,19 @@ describe("MbnStakingToken", function() {
     await this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package"));
   });
 
+  it("should not be able to stake negative amount token", async function() {
+    await expect(this.mbnStaking.connect(this.alice)
+      .stakeTokens(-50, ethers.utils.formatBytes32String("Silver Package"))).to.be.reverted;
+  });
+
+  it("should not be able to stake in an undefined package", async function() {
+    await expect(this.mbnStaking.connect(this.alice)
+      .stakeTokens(50, ethers.utils.formatBytes32String("Wrong package name"))).to.be.reverted;
+  });
+
+  it("should emit StakeEvent when staking", async function() {
+    await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 50);
+    await expect(this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package")))
+      .to.emit(this.mbnStaking, "StakeAdded").withArgs(this.alice.address, ethers.utils.formatBytes32String("Silver Package"), 50, 0);
+  });
 });

@@ -34,6 +34,12 @@ contract MbnStaking is Initializable {
     mapping(bytes32 => YieldType) public packages;
     mapping(address => Staker) public stakers;
 
+    event StakeAdded(
+        address indexed _staker, 
+        bytes32 _packageName, 
+        uint256 _amount, 
+        uint256 _stakeIndex
+    );
 
     // pseudo-constructor
     function initialize(address _tokenAddress) public initializer 
@@ -58,6 +64,11 @@ contract MbnStaking is Initializable {
 
     // public
     function stakeTokens(uint _amount, bytes32 _packageName) public {
+        require(
+            packages[_packageName].daysBlocked > 0,
+            "there is no active staking package with that name"
+        );
+
         if (stakers[msg.sender].stakes.length > 0) {
             stakerAddresses.push(msg.sender);
         }
@@ -73,6 +84,13 @@ contract MbnStaking is Initializable {
         stakers[msg.sender].stakes.push(newStake);
 
         tokenContract.transferFrom(msg.sender, address(this), _amount);
+
+        emit StakeAdded(
+            msg.sender, 
+            _packageName, 
+            _amount, 
+            stakers[msg.sender].stakes.length - 1
+        );
     }
     // internal
     // private
