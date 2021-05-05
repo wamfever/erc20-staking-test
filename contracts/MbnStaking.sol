@@ -1,12 +1,12 @@
 pragma solidity ^0.8.4;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "hardhat/console.sol";
 
-contract MbnStaking is Initializable {
+contract MbnStaking is Initializable, OwnableUpgradeable {
     using SafeMath for uint;
 
     uint private constant TIME_UNIT = 86400; //one day in seconds
@@ -39,14 +39,15 @@ contract MbnStaking is Initializable {
 
     uint private rewardPool;
 
+    event RewardAdded(address indexed _from, uint256 _amount);
+    event RewardRemoved(address indexed _to, uint256 _val);
+    event Unstaked(address indexed _staker, uint _stakeIndex);
     event StakeAdded(
         address indexed _staker, 
         bytes32 _packageName, 
         uint _amount, 
         uint _stakeIndex
     );
-
-    event Unstaked(address indexed _staker, uint _stakeIndex);
 
     // pseudo-constructor
     function initialize(address _tokenAddress) public initializer 
@@ -58,15 +59,33 @@ contract MbnStaking is Initializable {
         createPackage("Platinum Package", 90, 45, 30); 
     }
 
-    // receive function (if exists)
-    // fallback function (if exists)
-    // external
     function packageLength() external view returns (uint) {
         return packageNames.length;
     }
 
     function stakesLength(address _address) external view returns (uint) {
         return stakers[_address].stakes.length;
+    }
+
+    // function renounceOwnership() public onlyOwner {}
+    function renounceOwnership() public override onlyOwner {}
+
+    function addTokensToRewardPool(uint256 _amount) public
+    {
+        rewardPool = rewardPool.add(_amount);
+        tokenContract.transferFrom(msg.sender, address(this), _amount);
+
+        emit RewardAdded(msg.sender, _amount);
+    }
+
+    function removeTokensToRewardPool(uint256 _amount) public onlyOwner
+    {
+        require(_amount <= rewardPool, "You cannot withdraw more than reward pool size");
+
+        rewardPool = rewardPool.sub(_amount);
+        tokenContract.transfer(msg.sender, _amount);
+
+        emit RewardRemoved(msg.sender, _amount);
     }
 
     // public
@@ -172,8 +191,6 @@ contract MbnStaking is Initializable {
             _packagePeriods--;
         }
     }
-    // internal
-    // private
     function createPackage(
         bytes32 _name,
         uint _days,
