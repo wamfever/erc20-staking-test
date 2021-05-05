@@ -9,7 +9,7 @@ import "hardhat/console.sol";
 contract MbnStaking is Initializable {
     using SafeMath for uint;
 
-    uint256 private constant TIME_UNIT = 86400; //one day in seconds
+    uint private constant TIME_UNIT = 86400; //one day in seconds
 
     struct Package {
         uint daysLocked;
@@ -29,6 +29,7 @@ contract MbnStaking is Initializable {
         uint totalStakedBalance;
     }
 
+    uint public totalStakedFunds;
     IERC20 public tokenContract;
     bytes32[] public packageNames;
     address[] public stakerAddresses;
@@ -36,12 +37,16 @@ contract MbnStaking is Initializable {
     mapping(bytes32 => Package) public packages;
     mapping(address => Staker) public stakers;
 
+    uint private rewardPool;
+
     event StakeAdded(
         address indexed _staker, 
         bytes32 _packageName, 
         uint _amount, 
         uint _stakeIndex
     );
+
+    event Unstaked(address indexed _staker, uint _stakeIndex);
 
     // pseudo-constructor
     function initialize(address _tokenAddress) public initializer 
@@ -85,6 +90,8 @@ contract MbnStaking is Initializable {
 
         stakers[msg.sender].stakes.push(_newStake);
 
+        totalStakedFunds = totalStakedFunds.add(_amount);
+
         tokenContract.transferFrom(msg.sender, address(this), _amount);
 
         emit StakeAdded(
@@ -93,6 +100,49 @@ contract MbnStaking is Initializable {
             _amount, 
             stakers[msg.sender].stakes.length - 1
         );
+    }
+
+    function unstake(uint _stakeIndex) public {
+        require(
+            _stakeIndex < stakers[msg.sender].stakes.length,
+            "Undifened stake index"
+        );
+
+        Stake storage _stake = stakers[msg.sender].stakes[_stakeIndex];
+
+        require(
+            _stake.withdrawnTimestamp == 0,
+            "Stake already withdrawn"
+        );
+
+        require(
+            block.timestamp.sub(_stake.timestamp).div(TIME_UNIT) >
+                packages[_stake.packageName].daysBlocked,
+            "cannot unstake sooner than the blocked time"
+        );
+
+        uint _reward = checkReward(msg.sender, _stakeIndex);
+
+        require(
+            rewardPool >= _reward,
+            "Token creators did not place enough liquidity in the contract for your reward to be paid"
+        );
+
+        totalStakedFunds = totalStakedFunds.sub(_stake.amount);
+
+        stakers[msg.sender].totalStakedBalance = 
+            stakers[msg.sender].totalStakedBalance.sub(_stake.amount);
+
+        _stake.withdrawnTimestamp = block.timestamp;
+
+
+        rewardPool = rewardPool.sub(_reward);
+
+        uint _totalStake = _stake.amount.add(_reward);
+
+        tokenContract.transfer(msg.sender, _totalStake);
+        
+        emit Unstaked(msg.sender, _stakeIndex);
     }
 
     function checkReward(address _address, uint _stakeIndex)
