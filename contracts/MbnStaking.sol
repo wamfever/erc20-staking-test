@@ -9,10 +9,12 @@ import "hardhat/console.sol";
 contract MbnStaking is Initializable {
     using SafeMath for uint;
 
-    struct YieldType {
-        uint daysBlocked;
+    uint256 private constant TIME_UNIT = 86400; //one day in seconds
+
+    struct Package {
         uint daysLocked;
-        uint packageInterest;
+        uint daysBlocked;
+        uint interest;
     }
 
     struct Stake {
@@ -31,14 +33,14 @@ contract MbnStaking is Initializable {
     bytes32[] public packageNames;
     address[] public stakerAddresses;
 
-    mapping(bytes32 => YieldType) public packages;
+    mapping(bytes32 => Package) public packages;
     mapping(address => Staker) public stakers;
 
     event StakeAdded(
         address indexed _staker, 
         bytes32 _packageName, 
-        uint256 _amount, 
-        uint256 _stakeIndex
+        uint _amount, 
+        uint _stakeIndex
     );
 
     // pseudo-constructor
@@ -75,13 +77,13 @@ contract MbnStaking is Initializable {
 
         stakers[msg.sender].totalStakedBalance = stakers[msg.sender].totalStakedBalance.add(_amount);
 
-        Stake memory newStake;
-        newStake.amount = _amount;
-        newStake.packageName = _packageName;
-        newStake.timestamp = block.timestamp;
-        newStake.withdrawnTimestamp = 0;
+        Stake memory _newStake;
+        _newStake.amount = _amount;
+        _newStake.packageName = _packageName;
+        _newStake.timestamp = block.timestamp;
+        _newStake.withdrawnTimestamp = 0;
 
-        stakers[msg.sender].stakes.push(newStake);
+        stakers[msg.sender].stakes.push(_newStake);
 
         tokenContract.transferFrom(msg.sender, address(this), _amount);
 
@@ -92,17 +94,45 @@ contract MbnStaking is Initializable {
             stakers[msg.sender].stakes.length - 1
         );
     }
+
+    function checkReward(address _address, uint _stakeIndex)
+        public
+        view
+        returns (uint _reward)
+    {
+        uint _currentTime = block.timestamp;
+        Stake storage _stake = stakers[_address].stakes[_stakeIndex];
+        Package storage _package = packages[_stake.packageName];
+
+        if (_stake.withdrawnTimestamp != 0) {
+            _currentTime = _stake.withdrawnTimestamp;
+        }
+
+        uint _stakingPeriod = _currentTime.sub(_stake.timestamp).div(TIME_UNIT);
+        uint _packagePeriods = _stakingPeriod.div(_package.daysLocked);
+
+        _reward = 0;
+        uint _totalStake = _stake.amount;
+        uint _currentReward;
+
+        while (_packagePeriods > 0) {
+            _currentReward = _totalStake.mul(_package.interest).div(100);
+            _totalStake = _totalStake.add(_currentReward);
+            _reward= _reward.add(_currentReward);
+            _packagePeriods--;
+        }
+    }
     // internal
     // private
     function createPackage(
         bytes32 _name,
         uint _days,
         uint _daysBlocked,
-        uint _packageInterest
+        uint _interest
     ) private {
-        YieldType memory package;
+        Package memory package;
         package.daysLocked = _days;
-        package.packageInterest = _packageInterest;        
+        package.interest = _interest;        
         package.daysBlocked = _daysBlocked;
 
         packages[_name] = package;

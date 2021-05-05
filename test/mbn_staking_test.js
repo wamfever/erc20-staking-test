@@ -1,5 +1,6 @@
 var chai = require("chai");
 var chaiAsPromised = require("chai-as-promised");
+const { time } = require('@openzeppelin/test-helpers');
  
 chai.use(chaiAsPromised);
  
@@ -73,5 +74,26 @@ describe("MbnStakingToken", function() {
     await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 50);
     await expect(this.mbnStaking.connect(this.alice).stakeTokens(50, ethers.utils.formatBytes32String("Silver Package")))
       .to.emit(this.mbnStaking, "StakeAdded").withArgs(this.alice.address, ethers.utils.formatBytes32String("Silver Package"), 50, 0);
+  });
+
+  it("should be able to check reward", async function() {
+    await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice).stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await expect(this.mbnStaking.checkReward(this.alice.address, 0)).to.be.not.reverted;
+  });
+
+  it("should have reward only after minimum staking period", async function() {
+    await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice).stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    time.advanceBlockTo(await time.latestBlock() + 100);
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 15])
+    expect(await this.mbnStaking.checkReward(this.alice.address, 0)).to.be.equal(0);
+
+    time.advanceBlockTo(await time.latestBlock() + 200);
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 15])
+
+    expect(await this.mbnStaking.checkReward(this.alice.address, 0)).to.be.equal(8);
   });
 });
