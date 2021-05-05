@@ -23,7 +23,7 @@ describe("MbnStakingToken", function() {
   beforeEach(async function () {
     this.mbnToken = await this.MbnToken.deploy("Mbn token", "MBN", 1000000);
     this.mbnToken.deployed();
-    this.mbnStaking = await upgrades.deployProxy(this.MbnStaking, [this.mbnToken.address], {from: this.owner});
+    this.mbnStaking = await upgrades.deployProxy(this.MbnStaking, [this.mbnToken.address]);
 
     await this.mbnToken.transfer(this.alice.address, 1000);
     await this.mbnToken.transfer(this.bob.address, 1000);
@@ -63,12 +63,14 @@ describe("MbnStakingToken", function() {
 
   it("should not be able to stake negative amount token", async function() {
     await expect(this.mbnStaking.connect(this.alice)
-      .stakeTokens(-50, ethers.utils.formatBytes32String("Silver Package"))).to.be.reverted;
+      .stakeTokens(-50, ethers.utils.formatBytes32String("Silver Package")))
+        .to.be.reverted;
   });
 
   it("should not be able to stake in an undefined package", async function() {
     await expect(this.mbnStaking.connect(this.alice)
-      .stakeTokens(50, ethers.utils.formatBytes32String("Wrong package name"))).to.be.reverted;
+      .stakeTokens(50, ethers.utils.formatBytes32String("Wrong package name")))
+        .to.be.revertedWith("there is no active staking package with that name");
   });
 
   it("should emit StakeEvent after staking", async function() {
@@ -84,7 +86,7 @@ describe("MbnStakingToken", function() {
     await this.mbnStaking.connect(this.alice)
       .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
 
-    await expect(this.mbnStaking.checkReward(this.alice.address, 0)).to.be.not.reverted;
+    await expect(this.mbnStaking.checkReward(this.alice.address, 0)).to.be.fulfilled;
   });
 
   it("should have reward only after minimum staking period", async function() {
@@ -102,7 +104,7 @@ describe("MbnStakingToken", function() {
     expect(await this.mbnStaking.checkReward(this.alice.address, 0)).to.be.equal(8);
   });
 
-  it("Anyone can add tokens to reward pool", async function() {
+  it("anyone can add tokens to reward pool", async function() {
     await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 100);
     await expect(this.mbnStaking.connect(this.alice)
       .addTokensToRewardPool(100))
@@ -117,19 +119,41 @@ describe("MbnStakingToken", function() {
       .withArgs(this.alice.address, 100);
   });
 
+  it("should change paused state and emit event", async function() {
+    expect(await this.mbnStaking.paused()).to.be.equal(false);
+    await expect(this.mbnStaking.pauseStaking())
+      .to.emit(this.mbnStaking, "Paused");
+    expect(await this.mbnStaking.paused()).to.be.equal(true);
+    await expect(this.mbnStaking.unpauseStaking())
+      .to.emit(this.mbnStaking, "Unpaused");
+    expect(await this.mbnStaking.paused()).to.be.equal(false);
+  });
+
+  it("only owner can change paused state", async function() {
+    expect(await this.mbnStaking.paused()).to.be.equal(false);
+    await expect(this.mbnStaking.connect(this.alice).pauseStaking())
+      .to.be.revertedWith("caller is not the owner");
+  });
+
+  it("should revert staking when paused flag is true", async function() {
+    await this.mbnStaking.pauseStaking();
+    await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 100);
+
+    await expect(this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package")))
+      .to.be.revertedWith("Staking is paused");
+  });
+
   it("Only owner can remove tokens from reward pool", async function() {
   });
 
   it("should emit event after remove from pool reward", async function() {
-    // await this.mbnToken.increaseAllowance(this.mbnStaking.address, 100);
-    // await this.mbnStaking.addTokensToRewardPool(100);
+    await this.mbnToken.increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.addTokensToRewardPool(100);
 
-    // console.log(this.owner.address);
-    // console.log(await this.mbnStaking.owner());
-
-    // await expect(this.mbnStaking.connect(this.owner).removeTokensToRewardPool(100))
-    //   .to.emit(this.mbnStaking, "RewardRemoved")
-    //   .withArgs(this.owner.address, 100);
+    await expect(this.mbnStaking.connect(this.owner).removeTokensFromRewardPool(100))
+      .to.emit(this.mbnStaking, "RewardRemoved")
+      .withArgs(this.owner.address, 100);
   });
 
   it("should not be able to unstake before blocking time", async function() {

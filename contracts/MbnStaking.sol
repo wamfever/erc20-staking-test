@@ -29,6 +29,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         uint totalStakedBalance;
     }
 
+    bool public paused;
     uint public totalStakedFunds;
     IERC20 public tokenContract;
     bytes32[] public packageNames;
@@ -39,6 +40,8 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
 
     uint private rewardPool;
 
+    event Paused();
+    event Unpaused();
     event RewardAdded(address indexed _from, uint256 _amount);
     event RewardRemoved(address indexed _to, uint256 _val);
     event Unstaked(address indexed _staker, uint _stakeIndex);
@@ -53,6 +56,8 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
     // pseudo-constructor
     function initialize(address _tokenAddress) public initializer 
     {
+        __Ownable_init();
+
         tokenContract = IERC20(_tokenAddress);
 
         createPackage("Silver Package", 30, 15, 8);
@@ -78,7 +83,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         emit RewardAdded(msg.sender, _amount);
     }
 
-    function removeTokensToRewardPool(uint256 _amount) public onlyOwner
+    function removeTokensFromRewardPool(uint256 _amount) public onlyOwner
     {
         require(_amount <= rewardPool, "You cannot withdraw more than reward pool size");
 
@@ -90,6 +95,8 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
 
     // public
     function stakeTokens(uint _amount, bytes32 _packageName) public {
+        require(paused == false, "Staking is paused");
+
         require(
             packages[_packageName].daysBlocked > 0,
             "there is no active staking package with that name"
@@ -159,6 +166,22 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         tokenContract.transfer(msg.sender, _stake.amount);
 
         emit ForcedUnstake(msg.sender, _stakeIndex);
+    }
+
+    function pauseStaking() public onlyOwner 
+    {
+        if (!paused) {
+            paused = true;
+            emit Paused();
+        }
+    }
+
+    function unpauseStaking() public onlyOwner 
+    {
+        if (paused) {
+            paused = false;
+            emit Unpaused();
+        }
     }
 
     function checkReward(address _address, uint _stakeIndex)
