@@ -71,7 +71,7 @@ describe("MbnStakingToken", function() {
       .stakeTokens(50, ethers.utils.formatBytes32String("Wrong package name"))).to.be.reverted;
   });
 
-  it("should emit StakeEvent when staking", async function() {
+  it("should emit StakeEvent after staking", async function() {
     await this.mbnToken.connect(this.alice).increaseAllowance(this.mbnStaking.address, 50);
     await expect(this.mbnStaking.connect(this.alice)
       .stakeTokens(50, ethers.utils.formatBytes32String("Silver Package")))
@@ -139,7 +139,7 @@ describe("MbnStakingToken", function() {
       .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
 
     await expect(this.mbnStaking.connect(this.alice).unstake(0))
-    .to.be.revertedWith("cannot unstake sooner than the blocked time");
+    .to.be.revertedWith("Cannot unstake sooner than the blocked time");
   });
 
   it("should not be able to unstake undefined stake index", async function() {
@@ -152,7 +152,7 @@ describe("MbnStakingToken", function() {
       .unstake(1)).to.be.revertedWith("Undifened stake index");
   });
 
-  it("should be able to unstake after bloking time", async function() {
+  it("should be able to unstake after blocking time", async function() {
     await this.mbnToken.connect(this.alice)
       .increaseAllowance(this.mbnStaking.address, 100);
     await this.mbnStaking.connect(this.alice)
@@ -176,7 +176,6 @@ describe("MbnStakingToken", function() {
   });
 
   it("should unstake if reward pool is bigger than stake reward", async function() {
-    const aliceInitialBalance = parseInt(await this.mbnToken.balanceOf(this.alice.address));
     await this.mbnToken.connect(this.alice)
       .increaseAllowance(this.mbnStaking.address, 100);
     await this.mbnStaking.connect(this.alice)
@@ -188,6 +187,22 @@ describe("MbnStakingToken", function() {
     await network.provider.send("evm_increaseTime", [3600 * 24 * 30])
 
     await expect(this.mbnStaking.connect(this.alice).unstake(0)).to.be.fulfilled;
+  });
+
+  it("should unstake only once", async function() {
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await this.mbnToken.connect(this.bob).increaseAllowance(this.mbnStaking.address, 10);
+    await this.mbnStaking.connect(this.bob).addTokensToRewardPool(10)
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 31]);
+    await expect(this.mbnStaking.connect(this.alice).unstake(0)).to.be.fulfilled;
+
+    await expect(this.mbnStaking.connect(this.alice).unstake(0))
+      .to.be.revertedWith("Stake already withdrawn");
   });
 
   it("should have more tokens after rewarded unstake", async function() {
@@ -204,5 +219,58 @@ describe("MbnStakingToken", function() {
 
     await this.mbnStaking.connect(this.alice).unstake(0);
     expect(await this.mbnToken.balanceOf(this.alice.address)).to.be.equal(aliceInitialBalance + 8);
+  });
+
+  it("should not be able to force unstake an undefined stake index", async function() {
+    await expect(this.mbnStaking.connect(this.alice)
+      .forceUnstake(0)).to.be.revertedWith("Undifened stake index");
+  });
+
+  it("should not be able to force unstake before blocking time", async function() {
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 12]);
+    await expect(this.mbnStaking.connect(this.alice)
+      .forceUnstake(0)).to.be.revertedWith("Cannot unstake sooner than the blocked time");
+  });
+
+  it("should be able to force unstake after blocking time", async function() {
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 16]);
+    await expect(this.mbnStaking.connect(this.alice)
+      .forceUnstake(0)).to.be.fulfilled;
+  });
+
+  it("should be able to force unstake after blocking time", async function() {
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 16]);
+
+    await expect(this.mbnStaking.connect(this.alice).forceUnstake(0))
+      .to.emit(this.mbnStaking, "ForcedUnstake")
+      .withArgs(this.alice.address, 0);
+  });
+
+  it("should force unstake only once", async function() {
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Silver Package"));
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 16]);
+    await expect(this.mbnStaking.connect(this.alice).forceUnstake(0)).to.be.fulfilled;
+
+    await expect(this.mbnStaking.connect(this.alice).forceUnstake(0))
+      .to.be.revertedWith("Stake already withdrawn");
   });
 });

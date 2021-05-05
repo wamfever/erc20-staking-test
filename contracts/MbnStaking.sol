@@ -42,6 +42,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
     event RewardAdded(address indexed _from, uint256 _amount);
     event RewardRemoved(address indexed _to, uint256 _val);
     event Unstaked(address indexed _staker, uint _stakeIndex);
+    event ForcedUnstake(address indexed _staker, uint _stakeIndex);
     event StakeAdded(
         address indexed _staker, 
         bytes32 _packageName, 
@@ -67,7 +68,6 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         return stakers[_address].stakes.length;
     }
 
-    // function renounceOwnership() public onlyOwner {}
     function renounceOwnership() public override onlyOwner {}
 
     function addTokensToRewardPool(uint256 _amount) public
@@ -122,23 +122,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
     }
 
     function unstake(uint _stakeIndex) public {
-        require(
-            _stakeIndex < stakers[msg.sender].stakes.length,
-            "Undifened stake index"
-        );
-
-        Stake storage _stake = stakers[msg.sender].stakes[_stakeIndex];
-
-        require(
-            _stake.withdrawnTimestamp == 0,
-            "Stake already withdrawn"
-        );
-
-        require(
-            block.timestamp.sub(_stake.timestamp).div(TIME_UNIT) >
-                packages[_stake.packageName].daysBlocked,
-            "cannot unstake sooner than the blocked time"
-        );
+        Stake storage _stake = getSatakeForWithdrawal(_stakeIndex);
 
         uint _reward = checkReward(msg.sender, _stakeIndex);
 
@@ -162,6 +146,19 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         tokenContract.transfer(msg.sender, _totalStake);
         
         emit Unstaked(msg.sender, _stakeIndex);
+    }
+
+    function forceUnstake(uint _stakeIndex) public {
+        Stake storage _stake = getSatakeForWithdrawal(_stakeIndex);
+
+        _stake.withdrawnTimestamp = block.timestamp;
+        totalStakedFunds = totalStakedFunds.sub(_stake.amount);
+        stakers[msg.sender].totalStakedBalance = 
+            stakers[msg.sender].totalStakedBalance.sub(_stake.amount);
+
+        tokenContract.transfer(msg.sender, _stake.amount);
+
+        emit ForcedUnstake(msg.sender, _stakeIndex);
     }
 
     function checkReward(address _address, uint _stakeIndex)
@@ -204,5 +201,23 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
 
         packages[_name] = package;
         packageNames.push(_name);
+    }
+
+    function getSatakeForWithdrawal(uint _stakeIndex) private view
+    returns (Stake storage  _stake) {
+        require(
+            _stakeIndex < stakers[msg.sender].stakes.length,
+            "Undifened stake index"
+        );
+
+        _stake = stakers[msg.sender].stakes[_stakeIndex];
+
+        require(_stake.withdrawnTimestamp == 0, "Stake already withdrawn");
+
+        require(
+            block.timestamp.sub(_stake.timestamp).div(TIME_UNIT) >
+                packages[_stake.packageName].daysBlocked,
+            "Cannot unstake sooner than the blocked time"
+        );
     }
 }
