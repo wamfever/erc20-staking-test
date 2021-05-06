@@ -93,7 +93,6 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         emit RewardRemoved(msg.sender, _amount);
     }
 
-    // public
     function stakeTokens(uint _amount, bytes32 _packageName) public {
         require(paused == false, "Staking is paused");
 
@@ -106,7 +105,8 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
             stakerAddresses.push(msg.sender);
         }
 
-        stakers[msg.sender].totalStakedBalance = stakers[msg.sender].totalStakedBalance.add(_amount);
+        stakers[msg.sender].totalStakedBalance = 
+            stakers[msg.sender].totalStakedBalance.add(_amount);
 
         Stake memory _newStake;
         _newStake.amount = _amount;
@@ -129,7 +129,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
     }
 
     function unstake(uint _stakeIndex) public {
-        Stake storage _stake = getSatakeForWithdrawal(_stakeIndex);
+        Stake storage _stake = getStakeForWithdrawal(_stakeIndex);
 
         uint _reward = checkReward(msg.sender, _stakeIndex);
 
@@ -156,7 +156,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
     }
 
     function forceUnstake(uint _stakeIndex) public {
-        Stake storage _stake = getSatakeForWithdrawal(_stakeIndex);
+        Stake storage _stake = getStakeForWithdrawal(_stakeIndex);
 
         _stake.withdrawnTimestamp = block.timestamp;
         totalStakedFunds = totalStakedFunds.sub(_stake.amount);
@@ -200,16 +200,9 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         uint _stakingPeriod = _currentTime.sub(_stake.timestamp).div(TIME_UNIT);
         uint _packagePeriods = _stakingPeriod.div(_package.daysLocked);
 
-        _reward = 0;
-        uint _totalStake = _stake.amount;
-        uint _currentReward;
-
-        while (_packagePeriods > 0) {
-            _currentReward = _totalStake.mul(_package.interest).div(100);
-            _totalStake = _totalStake.add(_currentReward);
-            _reward= _reward.add(_currentReward);
-            _packagePeriods--;
-        }
+        //this formula calculates the reward of the stake
+        //I multiplied some variables with 1000 and then I divided the result in order to have much more precision
+        _reward = (_stake.amount * (1000 + 10 * _package.interest)**_packagePeriods).div(1000**_packagePeriods) - _stake.amount;
     }
     function createPackage(
         bytes32 _name,
@@ -226,7 +219,7 @@ contract MbnStaking is Initializable, OwnableUpgradeable {
         packageNames.push(_name);
     }
 
-    function getSatakeForWithdrawal(uint _stakeIndex) private view
+    function getStakeForWithdrawal(uint _stakeIndex) private view
     returns (Stake storage  _stake) {
         require(
             _stakeIndex < stakers[msg.sender].stakes.length,

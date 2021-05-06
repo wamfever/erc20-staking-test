@@ -14,8 +14,8 @@ task("accounts", "Prints the list of accounts", async () => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
-// const INFURA_URL = 'INFURA_URL'
-// const INFURA_PRIATE_KEY = 'INFURA_PRIATE_KEY'
+// const INFURA_URL = 'https://rinkeby.infura.io/v3/.......'
+// const PRIATE_KEY = '0x...........'
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -32,7 +32,7 @@ module.exports = {
     },
     // rinkeby: {
     //   url: INFURA_URL,
-    //   accounts: [`0x${INFURA_PRIATE_KEY}`]
+    //   accounts: [PRIATE_KEY]
     // }
   }
 };

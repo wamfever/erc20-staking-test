@@ -30,13 +30,13 @@ describe("MbnStakingToken", function() {
     await this.mbnToken.transfer(this.carol.address, 1000);
   });
   
-  it("Should be upgratable at the same address", async function() {
+  it("should be upgradable at the same address", async function() {
     const mbnStaking2 = await upgrades.upgradeProxy(this.mbnStaking.address, this.MbnStaking);
 
     expect(mbnStaking2.address).to.be.equal(this.mbnStaking.address);
   });
 
-  it("should have correct number of packeges", async function() {
+  it("should have correct number of packages", async function() {
     const length = await this.mbnStaking.packageLength();
     for(let i = 0; i < length; i++) {
       await expect(this.mbnStaking.packageNames(i)).to.be.fulfilled;
@@ -45,7 +45,7 @@ describe("MbnStakingToken", function() {
     await expect(this.mbnStaking.packageNames(length + 1)).to.be.reverted;
   });
 
-  it("should have all packeges defined", async function() {
+  it("should have all packages defined", async function() {
     const length = await this.mbnStaking.packageLength();
     for(let i = 0; i < length; i++) {
       let packageName = await this.mbnStaking.packageNames(i);
@@ -144,7 +144,7 @@ describe("MbnStakingToken", function() {
       .to.be.revertedWith("Staking is paused");
   });
 
-  it("Only owner can remove tokens from reward pool", async function() {
+  it("only owner can remove tokens from reward pool", async function() {
   });
 
   it("should emit event after remove from pool reward", async function() {
@@ -243,6 +243,22 @@ describe("MbnStakingToken", function() {
 
     await this.mbnStaking.connect(this.alice).unstake(0);
     expect(await this.mbnToken.balanceOf(this.alice.address)).to.be.equal(aliceInitialBalance + 8);
+  });
+
+  it("should have more tokens after rewarded unstake", async function() {
+    const aliceInitialBalance = parseInt(await this.mbnToken.balanceOf(this.alice.address));
+    await this.mbnToken.connect(this.alice)
+      .increaseAllowance(this.mbnStaking.address, 100);
+    await this.mbnStaking.connect(this.alice)
+      .stakeTokens(100, ethers.utils.formatBytes32String("Platinum Package"));
+
+    await this.mbnToken.connect(this.bob).increaseAllowance(this.mbnStaking.address, 1000);
+    await this.mbnStaking.connect(this.bob).addTokensToRewardPool(1000)
+
+    await network.provider.send("evm_increaseTime", [3600 * 24 * 120])
+
+    await this.mbnStaking.connect(this.alice).unstake(0);
+    expect(await this.mbnToken.balanceOf(this.alice.address)).to.be.equal(aliceInitialBalance + 30);
   });
 
   it("should not be able to force unstake an undefined stake index", async function() {
